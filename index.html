@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Airspace Commander</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #001f3f; }
+  canvas { display: block; margin: 0 auto; background: #001f3f; }
+  #instructions {
+    position: absolute;
+    top: 10px; left: 10px;
+    color: white;
+    font-size: 20px;
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+<div id="instructions">
+  🎙️ Click a plane, then say:<br>
+  "Cleared to land" or "Cleared for takeoff"
+</div>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let planes = [];
+let runways = [{x: canvas.width/2-50, y: canvas.height-100, width: 100, height: 20}];
+let selectedPlane = null;
+
+class Plane {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.speed = 2;
+    this.cleared = false;
+  }
+
+  update() {
+    if (this.cleared) {
+      this.y += this.speed;
+    }
+  }
+
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = this.cleared ? 'green' : 'white';
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function spawnPlane() {
+  let x = Math.random() * canvas.width;
+  planes.push(new Plane(x, 50));
+}
+
+function drawRunways() {
+  runways.forEach(r => {
+    ctx.fillStyle = 'gray';
+    ctx.fillRect(r.x, r.y, r.width, r.height);
+  });
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  let mouseX = e.clientX;
+  let mouseY = e.clientY;
+  selectedPlane = planes.find(p => Math.hypot(p.x - mouseX, p.y - mouseY) < 10);
+});
+
+window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.continuous = false;
+recognition.lang = 'en-US';
+
+recognition.onresult = (e) => {
+  if (selectedPlane) {
+    const transcript = e.results[0][0].transcript.toLowerCase();
+    if (transcript.includes('cleared to land') || transcript.includes('cleared for takeoff')) {
+      selectedPlane.cleared = true;
+    }
+  }
+};
+
+canvas.addEventListener('mouseup', () => {
+  recognition.start();
+});
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawRunways();
+  planes.forEach(p => {
+    p.update();
+    p.draw();
+  });
+  requestAnimationFrame(gameLoop);
+}
+
+setInterval(spawnPlane, 5000);
+gameLoop();
+</script>
+</body>
+</html>
